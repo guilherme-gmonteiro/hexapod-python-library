@@ -1,6 +1,24 @@
 from typing import Dict, Any
-from .ik.hexapodSolver import solveHexapodParams
+from .ik.hexapodSolver import solve_hexapod_params
 
+"""
+/* * *
+
+Return format:
+  poseSequence = {
+    leftMiddle: {
+        alpha: [],
+        beta: [],
+        gamma: [],
+    }
+    ....
+  }
+
+  gaitType = ["ripple", "tripod"]
+  walkMode = ["rotating", "walking"]
+  * * */
+
+"""
 def get_walk_sequence(
     dimensions: Dict[str, float],
     params: Dict[str, Any] = {
@@ -35,7 +53,7 @@ def get_walk_sequence(
         "rz": 0,
     }
 
-    ik_solver = solveHexapodParams(dimensions, raw_ik_params, True)[0]
+    ik_solver = solve_hexapod_params(dimensions, raw_ik_params, True)[0]
 
     if not ik_solver["foundSolution"] or ik_solver["hasLegsOffGround"]:
         return None
@@ -53,6 +71,52 @@ def get_walk_sequence(
     else:
         return tripod_sequence(ik_solver["pose"], a_lift_swing, hip_swings, step_count)
 
+"""
+/* *
+
+powerStroke aka stancePhase
+returnStroke aka swingPhase
+
+1. > startPowerStroke / endReturnStroke < 6.
+
+       \
+        \
+         *--*--*
+        /   |   \   /
+       * -- * -- * /
+      \ \   |   /
+       \ *--*--*
+
+2. > middlePowerStroke / middleReturnStroke < 5.
+
+     --- *--*--*
+        /   |   \
+       * -- * -- * ---
+        \   |   /
+    ---- *--*--*
+
+3. > endPowerStroke / startReturnStroke < 4.
+
+       / *--*--*
+      / /   |   \
+       * -- * -- *
+        \   |   / \
+         *--*--*   \
+       /
+      /
+
+ TRIPOD1 - leftFront, rightMiddle, leftBack
+
+ |----- powerStroke ----------|------- returnStroke -------|
+                              |-- liftUp --|-- shoveDown --|
+
+ TRIPOD2 rightFront, leftMiddle, rightBack
+
+ |------- returnStroke -------|----- powerStroke ----------|
+ |-- liftUp --|-- shoveDown --|
+
+ * */
+"""
 
 def tripod_sequence(pose, a_lift_swing, hip_swings, step_count) -> Dict[str, Dict[str, list]]:
     forward_alpha_seqs, lift_beta_seqs, lift_gamma_seqs = build_tripod_sequences(
@@ -108,7 +172,24 @@ def tripod_b_sequence(forward_alpha_seqs, lift_gamma_seqs, lift_beta_seqs, doubl
 
     return sequence
 
+"""
+/* * *
 
+RIPPLE SEQUENCE
+a - lift-up
+b - shove-down
+[1, 2, 3, 4] - retract / power stroke sequence
+
+left-back     |-- a --|-- b --|   1   |   2   |   3   |   4   |
+left-middle   |   3   |   4   |-- a --|-- b --|   1   |   2   |
+left-front    |   1   |   2   |   3   |   4   |-- a --|-- b --|
+right-front   |   4   |-- a --|-- b --|   1   |   2   |   3   |
+right-back    |   1   |   2   |   3   |-- a --|-- b --|   4   |
+right-middle  |-- b --|   1   |   2   |   3   |   4   |-- a --|
+
+ * * */
+
+"""
 def ripple_sequence(start_pose, a_lift_swing, hip_swings, step_count) -> Dict[str, Dict[str, list]]:
     sequences = {}
     for position, pose in start_pose.items():

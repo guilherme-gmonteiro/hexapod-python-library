@@ -22,7 +22,7 @@ def solve_inverse_kinematics(dimensions, raw_ik_params, flags={"rotateThenShift"
             "message": ik_solver.message,
             "hexapod": None,
         }
-
+    # How the hexapod looks like if the center of gravity is at (0, 0, _)
     current_hexapod = VirtualHexapod(dimensions, ik_solver.pose)
     excluded_positions = ik_solver.leg_positions_off_ground
 
@@ -47,7 +47,13 @@ def solve_inverse_kinematics(dimensions, raw_ik_params, flags={"rotateThenShift"
         "hexapod": hexapod,
     }
 
-
+"""
+/* * *
+    Returns a two-element array
+    1. ikSolver: IKSolver object
+    2. An array of target ground contact points
+ * * */
+"""
 def solve_hexapod_params(dimensions, raw_ik_params, rotate_then_shift):
     t_vec, rot_matrix, start_pose = convert_ik_params(dimensions, raw_ik_params)
     start_hexapod = VirtualHexapod(dimensions, start_pose)
@@ -63,18 +69,33 @@ def solve_hexapod_params(dimensions, raw_ik_params, rotate_then_shift):
 
     return ik_solver, targets["groundContactPoints"]
 
-
+# Make sure all parameter values are numbers
 def raw_params_to_numbers(raw_params):
     return {key: float(val) for key, val in raw_params.items()}
 
-
+"""
+ tx, ty, and tz are within the range of (-1, 1)
+ return the actual values we want the hexapod's center of gravity to be at
+"""
 def convert_from_percent_to_translate_values(tx, ty, tz, middle, side, tibia):
     shift_x = tx * middle
     shift_y = ty * side
     shift_z = tz * tibia
     return Vector(shift_x, shift_y, shift_z)
 
+"""
+/* * *
 
+startPose:
+    - The pose of the hexapod before we
+        rotate and translate the hexapod
+    - The body (hexagon) is flat at this point
+    - At the very end, we want the hexapod
+        to step on the same place as at this pose
+        (ie same ground contact points)
+
+ * * */
+"""
 def build_start_pose(hip_stance, leg_stance):
     beta_and_gamma = {"beta": leg_stance, "gamma": -leg_stance}
     alphas = [0, -hip_stance, hip_stance, 0, -hip_stance, hip_stance]
@@ -84,7 +105,26 @@ def build_start_pose(hip_stance, leg_stance):
         for index, alpha in enumerate(alphas)
     }
 
+"""
+/* * *
 
+compute for the following:
+
+startPose:
+    - The pose of the hexapod before we
+        rotate and translate the hexapod
+    - see function buildStartPose() for details
+
+rotateMatrix:
+    - The transformation matrix we would use to
+        rotate the hexapod's body
+
+tVec
+    - The translation vector we would use to
+        shift the hexapod's body
+
+ * * */
+"""
 def convert_ik_params(dimensions, raw_ik_params):
     ik_params = raw_params_to_numbers(raw_ik_params)
 
@@ -102,6 +142,16 @@ def convert_ik_params(dimensions, raw_ik_params):
     return t_vec, start_pose, rot_matrix
 
 
+"""
+/* * *
+
+compute the parameters required to solve
+for the hexapod's inverse kinematics
+
+see IKSolver() class for details.
+
+ * * */
+"""
 def build_hexapod_targets(hexapod, rot_matrix, t_vec, flags):
     ground_contact_points = [leg.maybe_ground_contact_point for leg in hexapod.legs]
 
@@ -118,7 +168,22 @@ def build_hexapod_targets(hexapod, rot_matrix, t_vec, flags):
 
     return {"groundContactPoints": ground_contact_points, "bodyContactPoints": body_contact_points, "axes": axes}
 
+"""
+/* * *
 
+We know 2 point positions that we know are
+foot tip ground contact points
+(position ie "rightMiddle" etc)
+
+The given `hexapod` is stepping at the `current` points
+
+We want to return a hexapod that is
+shifted and rotated it so that those
+two points would be stepping at their
+respective `target` points
+
+ * * */
+"""
 def rotate_shift_hexapod_given_pivots(hexapod, points1, points2):
     target_vector = vector_from_to(points1["target"], points2["target"])
     current_vector = vector_from_to(points1["current"], points2["current"])
@@ -134,6 +199,16 @@ def rotate_shift_hexapod_given_pivots(hexapod, points1, points2):
     return hexapod.clone_trot(twist_matrix).clone_shift(translate_vector.x, translate_vector.y, 0)
 
 
+"""
+/* * *
+
+given the points where the hexapod should step on
+
+Find two foot tips as pivot points
+that we can use to shift and twist the current Hexapod
+
+ * * */
+"""
 def find_two_pivot_points(current_points, target_points, excluded_positions):
     target_points_map = {point.name: point for point in target_points}
 

@@ -1,3 +1,4 @@
+import math
 from ..geometry import degrees
 from ..constants import POSITION_NAME_TO_ID_MAP
 
@@ -85,8 +86,8 @@ def complex_twist(current_points, default_points):
     default_same_point = default_points[same_point_index]
 
     theta_radians = (
-        atan2(default_same_point.y, default_same_point.x)
-        - atan2(default_same_point.y, default_same_point.x)
+        math.atan2(default_same_point.y, default_same_point.x)
+        - math.atan2(default_same_point.y, default_same_point.x)
     )
 
     return degrees(theta_radians)

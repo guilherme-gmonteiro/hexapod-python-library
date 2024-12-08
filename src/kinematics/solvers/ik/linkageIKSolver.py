@@ -167,6 +167,19 @@ class LinkageIKSolver:
             self.info = LegIKInfo.tibia_too_long(self.leg_position)
             return
 
+        """
+                // then femur + tibia < pars
+        //
+        // p0 *---* p1     * stretch to try to reach target
+        //         \       * gamma:
+        //          * p2      => 90: stretch, 0: curl down, 180: curl up
+        //           \
+        //            * p3 (actual when stretched)
+        //
+        //              * targetp3
+        //
+
+        """
         pars_vector, leg_xaxis = self.vectors["parsVector"], self.vectors["legXaxis"]
         self.angles.update({
             "beta": -angle_between(pars_vector, leg_xaxis),

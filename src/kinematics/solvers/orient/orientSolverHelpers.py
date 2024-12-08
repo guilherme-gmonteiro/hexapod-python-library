@@ -1,4 +1,3 @@
-from typing import List
 from vector import Vector
 from geometry import dot, cross, vector_from_to
 

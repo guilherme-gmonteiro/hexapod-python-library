@@ -1,5 +1,5 @@
 import math
-from geometry import tRotYmatrix, tRotZmatrix, multiply4x4
+from geometry import t_rot_y_matrix, t_rot_z_matrix, multiply_4x4
 from constants import LEG_POINT_TYPES_LIST, POSITION_NAME_TO_ID_MAP, POSITION_NAME_TO_AXIS_ANGLE_MAP
 from vector import Vector
 
@@ -131,6 +131,24 @@ class Linkage:
         maybe_ground_contact_point = min(reversed_list, key=lambda point: point["z"])
         return maybe_ground_contact_point
 
+    """
+        /* *
+     * .............
+     * clone (translate) rotate shift cloneTrotShift
+     * .............
+     *
+     * params type:
+     *   matrix:  4x4 matrix
+     *   tx, ty, tz: numbers
+     *
+     * Return a copy of the leg with the same properties
+     * except all the points are rotated and shifted
+     * given the transformation matrix (4x4 matrix) and tx, ty, tz
+     * Note: The transformation matrix can translate the leg
+     * if the last column of of the matrix have non-zero elements
+     * and again be translated by tx, ty, tz
+     * */
+    """
     def clone_trot_shift(self, transform_matrix, tx, ty, tz):
         return self._do_transform("clone_trot_shift", transform_matrix, tx, ty, tz)
 
@@ -166,13 +184,28 @@ class Linkage:
             self._build_name_id(point_type, index)
             for index, point_type in enumerate(LEG_POINT_TYPES_LIST)
         ]
-
+    """
+        /* *
+     * ................
+     * STEP 1 of computing points:
+     *   find points wrt body contact point
+     * ................
+     * NOTE:
+     * matrix_ab is the matrix which defines the
+     * pose of that coordinate system defined by
+     * matrix_b wrt the coordinate system defined by matrix_a
+     * matrix_ab is the pose of matrix_b wrt matrix_a
+     * where pa is the origin of matrix_a
+     * and pb is the origin of matrix_b wrt pa
+     *
+     * */
+     """
     def _compute_points_wrt_body_contact(self, beta, gamma):
-        matrix01 = tRotYmatrix(-beta, self.dimensions["coxia"], 0, 0)
-        matrix12 = tRotYmatrix(90 - gamma, self.dimensions["femur"], 0, 0)
-        matrix23 = tRotYmatrix(0, self.dimensions["tibia"], 0, 0)
-        matrix02 = multiply4x4(matrix01, matrix12)
-        matrix03 = multiply4x4(matrix02, matrix23)
+        matrix01 = t_rot_y_matrix(-beta, self.dimensions["coxia"], 0, 0)
+        matrix12 = t_rot_y_matrix(90 - gamma, self.dimensions["femur"], 0, 0)
+        matrix23 = t_rot_y_matrix(0, self.dimensions["tibia"], 0, 0)
+        matrix02 = multiply_4x4(matrix01, matrix12)
+        matrix03 = multiply_4x4(matrix02, matrix23)
 
         origin_point = Vector(0, 0, 0)
 
@@ -184,11 +217,17 @@ class Linkage:
         ]
 
         return local_points
-
+        """
+     * ................
+     * STEP 2 of computing points:
+     *   find local points wrt hexapod's center of gravity (0, 0, 0)
+     * ................
+     * */
+        """
     def _compute_points_wrt_hexapod_cog(self, alpha, origin_point, local_points, point_name_ids):
         z_angle = POSITION_NAME_TO_AXIS_ANGLE_MAP[self.position] + alpha
 
-        twist_matrix = tRotZmatrix(
+        twist_matrix = t_rot_z_matrix(
             z_angle, origin_point["x"], origin_point["y"], origin_point["z"]
         )
 
@@ -199,6 +238,17 @@ class Linkage:
 
         return all_points_list
 
+    """
+        /* *
+     *  Example of allPointsList =  [
+     *     {x, y, z, id: "5-0", name: "rightBack-bodyContactPoint"},
+     *     {x, y, z, id: "5-1", name: "rightBack-coxiaPoint"},
+     *     {x, y, z, id: "5-2", name: "rightBack-femurPoint"},
+     *     {x, y, z, id: "5-3", name: "rightBack-footTipPoint"},
+     * ]
+     * x, y, z are numbers
+     * */
+    """
     def _compute_points(self, pose, origin_point):
         alpha, beta, gamma = pose["alpha"], pose["beta"], pose["gamma"]
         point_name_ids = self._build_point_name_ids()

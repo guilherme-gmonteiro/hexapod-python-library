@@ -1,4 +1,44 @@
 from .vector import Vector  # Importando a classe Vector
+from .constants import POSITION_NAMES_LIST
+"""
+/* * *
+  ..................
+   Hexagon
+  ..................
+
+         |-f-|
+         *---*---*--------   * f - front
+        /    |    \     |    * s - side
+       /     |     \    s    * m - middle
+      /      |      \   |
+     *------cog------* ---
+      \      |      /|
+       \     |     / |
+        \    |    /  |
+         *---*---*   |
+             |       |
+             |---m---|
+
+
+      (leftFront)     (rightFront)
+           v2          v1
+            \   head  /
+             *---*---*
+            /    |    \
+  (left    /     |     \
+  Middle) /      |      \
+    v3 --*------cog------*-- v0 (rightMiddle)
+          \      |      /
+           \     |     /
+            \    |    /
+             *---*---*
+            /         \
+          v4           v5
+       (leftBack)   (rightBack)
+
+ * * */
+
+"""
 
 class Hexagon:
     def __init__(self, dimensions, flags={"hasNoPoints": False}):
